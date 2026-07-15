@@ -1,0 +1,103 @@
+@import "tailwindcss";
+
+/* Next.js 16 renamed middleware.ts -> proxy.ts; Tailwind v4 has an
+   analogous "the old way silently does nothing" trap here: darkMode:
+   'class' in tailwind.config.js no longer exists. Dark mode is configured
+   in CSS now, with this line. Toggling happens by adding/removing `.dark`
+   on <html> - see components/theme-toggle.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* The one truly dynamic color: an Admin picks this from Settings, so it
+   has to resolve at runtime, not at build time. @theme (without inline)
+   bakes a value in when the CSS compiles; @theme inline instead points
+   the generated bg-primary/text-primary/etc. utilities straight at the
+   CSS variable, so changing --primary on <html> (done in the root layout
+   from the DB-loaded setting) repaints every utility using it with no
+   rebuild. Falls back to a default here so unstyled flashes never happen
+   even before the layout sets the real value. */
+:root {
+  --primary: #0f766e;
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+}
+
+@theme {
+  /* Warm ink/paper neutrals instead of stock gray/slate - the palette is
+     the one place this app's own identity lives, since --primary is
+     deliberately handed to whoever deploys it. */
+  --color-paper: #faf7f1;
+  --color-paper-surface: #ffffff;
+  --color-paper-border: #e8e1d3;
+  --color-paper-text: #23201b;
+  --color-paper-text-muted: #6f6656;
+
+  --color-ink: #171310;
+  --color-ink-surface: #211c17;
+  --color-ink-border: #3a3128;
+  --color-ink-text: #ede7db;
+  --color-ink-text-muted: #a79a85;
+
+  /* Ithman band colors - muted, manuscript-pigment tones rather than
+     stock traffic-light red/yellow/green, but still unambiguous at a
+     glance, which matters more here than restraint does. */
+  --color-band-red: #b5482e;
+  --color-band-red-soft: #f3ddd5;
+  --color-band-yellow: #c08a2e;
+  --color-band-yellow-soft: #f2e6cd;
+  --color-band-green: #3c7a5c;
+  --color-band-green-soft: #dbeae1;
+
+  --font-display: var(--font-amiri), serif;
+  --font-body: var(--font-plex-arabic), sans-serif;
+  --font-data: var(--font-plex-mono), monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-body);
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-paper-text);
+  }
+
+  html.dark body {
+    background-color: var(--color-ink);
+    color: var(--color-ink-text);
+  }
+
+  /* Visible keyboard focus everywhere, not just form controls - a quiet
+     accessibility floor the design shouldn't skip. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Printing should never inherit dark mode - it's a screen preference,
+     not a paper one, and dark backgrounds waste ink/toner. AppShell hides
+     the sidebar/top bar via print:hidden; this covers color. */
+  @media print {
+    html.dark body {
+      background-color: var(--color-paper);
+      color: var(--color-paper-text);
+    }
+    html.dark * {
+      color: var(--color-paper-text) !important;
+      background-color: transparent !important;
+      border-color: var(--color-paper-border) !important;
+    }
+  }
+}

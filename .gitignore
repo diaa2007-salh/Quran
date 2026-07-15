@@ -1,0 +1,28 @@
+# dependencies
+/node_modules
+
+# Next.js build output
+/.next/
+/out/
+
+# Prisma v7 generated client - produced by `npx prisma generate`, not
+# committed, matches the `output` path in prisma/schema.prisma
+/generated/prisma
+
+# environment variables - .env.example is the only one that should be
+# committed; every other .env* file holds real secrets
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# OS / editor
+.DS_Store
+*.pem
+.vscode/*
+!.vscode/extensions.json

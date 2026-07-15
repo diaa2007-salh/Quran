@@ -1,0 +1,181 @@
+// ============================================================================
+// Quran Halaqat & Camp Management System
+// Prisma schema — PostgreSQL
+//
+// Prisma v7 note: the connection URL no longer lives here - as of v7 the
+// `url` field on datasource is rejected at validation time. See
+// prisma.config.ts (project root) instead. Also note the generator
+// provider is "prisma-client" (v7), not the old "prisma-client-js" - and
+// v7 requires an explicit `output` path (nothing is auto-generated into
+// node_modules anymore).
+//
+// output is root-level generated/prisma (not nested under src/) to match
+// Prisma's and Vercel's own official Next.js guides exactly - gitignored,
+// produced by `npx prisma generate` (see package.json's postinstall).
+// Import the generated client via lib/prisma.ts, not directly - see that
+// file's comments for why.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// -----------------------------------------------------------------------
+// Enums
+// -----------------------------------------------------------------------
+
+enum Role {
+  ADMIN
+  TEACHER
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+}
+
+// -----------------------------------------------------------------------
+// Settings
+// Single global row — id is always the literal string "global". Prisma
+// can't enforce "exactly one row" beyond the primary key, so every Server
+// Action must upsert/read this exact id. Drives white-labeling: read in
+// the root layout, Navbar, generateMetadata(), and the login page.
+// -----------------------------------------------------------------------
+
+model Settings {
+  id           String   @id @default("global")
+  campName     String
+  logoUrl      String?
+  welcomeText  String?
+  primaryColor String   @default("#0f766e")
+  updatedAt    DateTime @updatedAt
+}
+
+// -----------------------------------------------------------------------
+// User
+// ADMIN and TEACHER accounts. Credentials-only auth: the Admin creates,
+// freezes, and resets passwords for every account, so there's no
+// self-registration/OAuth/email-verification data to model here — this
+// pairs with NextAuth v5's CredentialsProvider on a JWT session strategy.
+// -----------------------------------------------------------------------
+
+model User {
+  id             String   @id @default(cuid())
+  username       String   @unique
+  hashedPassword String
+  fullName       String
+  role           Role
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  groups               Group[]              @relation("TeacherGroups")
+  recordedAttendance   Attendance[]         @relation("AttendanceRecorder")
+  recordedMemorization WeeklyMemorization[] @relation("MemorizationRecorder")
+
+  @@index([role])
+}
+
+// -----------------------------------------------------------------------
+// Group (Halaqa)
+// A teacher can hold more than one group. Deleting a teacher leaves their
+// group(s) and students in place, just unassigned.
+// -----------------------------------------------------------------------
+
+model Group {
+  id        String    @id @default(cuid())
+  name      String
+  teacherId String?
+  teacher   User?     @relation("TeacherGroups", fields: [teacherId], references: [id], onDelete: SetNull)
+  students  Student[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([teacherId])
+}
+
+// -----------------------------------------------------------------------
+// Student
+// -----------------------------------------------------------------------
+
+model Student {
+  id            String   @id @default(cuid())
+  fullName      String
+  guardianPhone String?
+  isActive      Boolean  @default(true)
+  groupId       String?
+  group         Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  attendances   Attendance[]
+  memorizations WeeklyMemorization[]
+
+  @@index([groupId])
+  @@index([fullName])
+}
+
+// -----------------------------------------------------------------------
+// Attendance
+// One row per student per day. "التأخر اليومي" (lateness) and "الغياب
+// اليومي" (absence) are two screens over this SAME table — both just
+// toggle `status` — so a student can never be late in one place and
+// absent in another.
+// -----------------------------------------------------------------------
+
+model Attendance {
+  id           String           @id @default(cuid())
+  studentId    String
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  date         DateTime         @db.Date
+  status       AttendanceStatus @default(PRESENT)
+  recordedById String?
+  recordedBy   User?            @relation("AttendanceRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@unique([studentId, date])
+  @@index([date])
+  @@index([recordedById])
+}
+
+// -----------------------------------------------------------------------
+// WeeklyMemorization
+// startSurah/startAyah are locked server-side from last week's
+// endSurah/endAyah + 1 — that continuation logic lives in a Server
+// Action, not the DB. ithmanCount is computed at write-time from the
+// sura/ayah range against a static Quran ayah-position dataset (that
+// dataset belongs in app code, not a table — see chat note). The
+// red/yellow/green band is a pure function of ithmanCount, computed in
+// the UI rather than stored, so thresholds can change without a
+// migration.
+// -----------------------------------------------------------------------
+
+model WeeklyMemorization {
+  id            String   @id @default(cuid())
+  studentId     String
+  student       Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  weekStartDate DateTime @db.Date
+
+  startSurah  Int
+  startAyah   Int
+  endSurah    Int
+  endAyah     Int
+  ithmanCount Float
+
+  recordedById String?
+  recordedBy   User?   @relation("MemorizationRecorder", fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, weekStartDate])
+  @@index([weekStartDate])
+  @@index([recordedById])
+}
