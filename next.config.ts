@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // way to handle this - the older per-bundler workarounds (a webpack()
   // IgnorePlugin config) don't apply here since Turbopack doesn't run
   // that hook at all, and Next 16 defaults to Turbopack.
-  serverExternalPackages: ["pg", "@prisma/adapter-pg"],
+  serverExternalPackages: ["pg", "@prisma/adapter-pg", "@prisma/client"],
 };
 
 export default nextConfig;

@@ -1,7 +1,7 @@
 import { Pool } from "pg";
 import { attachDatabasePool } from "@vercel/functions";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "../../generated/prisma/client";
+import { PrismaClient } from  "@prisma/client";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -28,7 +28,7 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter } as any);
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
@@ -37,4 +37,5 @@ if (process.env.NODE_ENV !== "production") {
 // Re-exported so the rest of the app imports enums/model types from this
 // one file instead of "@prisma/client" (wrong package in v7) or reaching
 // into the generated folder directly from every call site.
-export * from "../../generated/prisma/client";
+export { PrismaClient, Role,AttendanceStatus } from "@prisma/client";
+export type { User } from "@prisma/client";

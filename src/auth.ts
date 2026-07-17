@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { prisma } from "@/lib/prisma";
+import type { Role } from "@prisma/client";
 import { verifyPassword } from "@/lib/password";
 
 const credentialsSchema = z.object({
@@ -54,9 +55,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     },
     session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id;
-        session.user.username = token.username;
-        session.user.role = token.role;
+        session.user.id = token.id as string;
+        session.user.username = token.username as string;
+        session.user.role = token.role as Role;
       }
       return session;
     },
