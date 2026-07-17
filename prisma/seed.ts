@@ -1,29 +1,37 @@
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
+// TypeScript in this environment may not have @types/node available.
+// Declare `process` to avoid TS errors about missing node types.
+declare const process: any;
 
+// 🚀 نوفر رابط قاعدة البيانات عبر متغير البيئة قبل إنشاء العميل
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = "postgresql://neondb_owner:npg_ELZMTmS6v7PH@ep-calm-surf-aswin.tech/neondb?sslmode=require&channel_binding=require";
+}
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("⏳ بدء عملية حقن البيانات (Seeding)...");
+  console.log("Starting DB seeding...");
 
-  // 1. تنظيف البيانات القديمة المتعارضة
-  await prisma.user.deleteMany({ where: { username: "DiaaSalah" } });
-
-  // 2. تشفير كلمة المرور مباشرة بـ bcrypt
   const hashedPassword = await bcrypt.hash("Diaa2022", 10);
 
-  // 3. إنشاء حساب المدير الأساسي
-  const admin = await prisma.user.create({
-    data: {
+  const admin = await prisma.user.upsert({
+    where: { username: "DiaaSalah" },
+    update: {
+      hashedPassword: hashedPassword,
+      isActive: true,
+      role: Role.ADMIN,
+    },
+    create: {
       username: "DiaaSalah",
       fullName: "Diaa Salah",
       hashedPassword: hashedPassword,
-      role: Role.ADMIN, 
+      role: Role.ADMIN,
       isActive: true,
     },
   });
 
-  console.log(`✅ تم إنشاء حساب المدير بنجاح: ${admin.username}`);
+  console.log("Admin user sync completed: " + admin.username);
 }
 
 main()
@@ -31,7 +39,7 @@ main()
     await prisma.$disconnect();
   })
   .catch(async (e) => {
-    console.error("❌ حدث خطأ أثناء الـ Seeding:", e);
+    console.error("Seeding error:", e);
     await prisma.$disconnect();
-    void (globalThis as any).process?.exit(1);
+    process.exit(1);
   });
