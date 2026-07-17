@@ -1,14 +1,15 @@
 import { PrismaClient, Role } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import bcrypt from "bcryptjs";
-// TypeScript in this environment may not have @types/node available.
-// Declare `process` to avoid TS errors about missing node types.
-declare const process: any;
 
-// 🚀 نوفر رابط قاعدة البيانات عبر متغير البيئة قبل إنشاء العميل
 if (!process.env.DATABASE_URL) {
-  process.env.DATABASE_URL = "postgresql://neondb_owner:npg_ELZMTmS6v7PH@ep-calm-surf-aswin.tech/neondb?sslmode=require&channel_binding=require";
+  throw new Error("DATABASE_URL is missing in environment variables");
 }
-const prisma = new PrismaClient();
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("Starting DB seeding...");
@@ -18,20 +19,20 @@ async function main() {
   const admin = await prisma.user.upsert({
     where: { username: "DiaaSalah" },
     update: {
-      hashedPassword: hashedPassword,
+      hashedPassword,
       isActive: true,
       role: Role.ADMIN,
     },
     create: {
       username: "DiaaSalah",
       fullName: "Diaa Salah",
-      hashedPassword: hashedPassword,
+      hashedPassword,
       role: Role.ADMIN,
       isActive: true,
     },
   });
 
-  console.log("Admin user sync completed: " + admin.username);
+  console.log("Admin user sync completed:", admin.username);
 }
 
 main()
