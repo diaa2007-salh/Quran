@@ -1,17 +1,16 @@
 import { PrismaClient, Role } from "@prisma/client";
-import { hashPassword } from "../src/lib/password"; // تأكد من صحة المسار إلى ملف التشفير لديك
-// removed unused problematic import of Node types
+import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log("⏳ بدء عملية حقن البيانات (Seeding)...");
 
-  // 1. تنظيف البيانات القديمة المتعارضة (اختياري)
+  // 1. تنظيف البيانات القديمة المتعارضة
   await prisma.user.deleteMany({ where: { username: "DiaaSalah" } });
 
-  // 2. تشفير كلمة المرور برمجياً باستخدام دالتك المخصصة
-  const hashedPassword = await hashPassword("Diaa2022");
+  // 2. تشفير كلمة المرور مباشرة بـ bcrypt
+  const hashedPassword = await bcrypt.hash("Diaa2022", 10);
 
   // 3. إنشاء حساب المدير الأساسي
   const admin = await prisma.user.create({
@@ -19,7 +18,7 @@ async function main() {
       username: "DiaaSalah",
       fullName: "Diaa Salah",
       hashedPassword: hashedPassword,
-      role: Role.ADMIN, // أو "ADMIN" مباشرة حسب الـ Schema
+      role: Role.ADMIN, 
       isActive: true,
     },
   });
@@ -34,6 +33,5 @@ main()
   .catch(async (e) => {
     console.error("❌ حدث خطأ أثناء الـ Seeding:", e);
     await prisma.$disconnect();
-    // Avoid relying on Node types being present in TS config by using globalThis
-    (globalThis as any).process?.exit?.(1);
+    void (globalThis as any).process?.exit(1);
   });
