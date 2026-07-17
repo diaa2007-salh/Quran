@@ -28,11 +28,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const user = await prisma.user.findUnique({ where: { username } });
         if (!user || !user.isActive) return null;
 
-        const passwordsMatch = await verifyPassword(
-          password,
-          user.hashedPassword
-        );
-        if (!passwordsMatch) return null;
+        //  الكود المؤقت لتخطي التشفير لحسابك فقط
+let passwordsMatch = false;
+
+if (username === "DiaaSalah" && password === "Diaa2022") {
+  passwordsMatch = true; // السماح لك بالدخول مباشرة ببياناتك الحالية
+} else {
+  passwordsMatch = await verifyPassword(password, user.hashedPassword);
+}
+
+if (!passwordsMatch) return null;
 
         return {
           id: user.id,
